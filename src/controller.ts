@@ -16,7 +16,7 @@ const DEBOUNCE_MS = 400;
  * decorations. Debounced per document, with a generation counter + AbortController
  * so superseded refreshes are cancelled and their stale results dropped.
  */
-export class InsightController {
+export class InsightController  {
 	private readonly generations = new Map<string, number>();
 	private readonly debounceTimers = new Map<string, ReturnType<typeof setTimeout>>();
 	private readonly inflight = new Map<string, AbortController>();

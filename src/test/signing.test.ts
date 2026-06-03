@@ -1,5 +1,6 @@
 import * as assert from 'assert';
 import { createHash } from 'node:crypto';
+import { describe, it } from 'node:test';
 import { p256 } from '@noble/curves/p256';
 import { deriveFingerprint, isValidTokenFormat, signRequest } from '../api/signing';
 
@@ -10,17 +11,17 @@ const FIXED = '1a73970f31816d996ab514c4ffea04b6dee0eadc107267d0c911fd817a7b5167'
 const GOLDEN_FINGERPRINT = 'b6c40569c43b73924a56e90e4130916b556afe42b20e45ba6fcd9a25d4378c96';
 const EMPTY_BODY_DIGEST = 'sha-256=:47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=:';
 
-suite('signing', () => {
-	test('fingerprint matches the Go-computed golden value', () => {
+describe('signing', () => {
+	it('fingerprint matches the Go-computed golden value', () => {
 		assert.strictEqual(deriveFingerprint(FIXED), GOLDEN_FINGERPRINT);
 	});
 
-	test('content-digest is the structured sha-256 of the empty body', () => {
+	it('content-digest is the structured sha-256 of the empty body', () => {
 		const headers = signRequest(FIXED, { method: 'GET' });
 		assert.strictEqual(headers['Content-Digest'], EMPTY_BODY_DIGEST);
 	});
 
-	test('signature-input covers @method and content-digest with created + alg', () => {
+	it('signature-input covers @method and content-digest with created + alg', () => {
 		const headers = signRequest(FIXED, { method: 'GET' });
 		assert.match(
 			headers['Signature-Input'],
@@ -28,7 +29,7 @@ suite('signing', () => {
 		);
 	});
 
-	test('signature verifies against the derived public key (round trip)', () => {
+	it('signature verifies against the derived public key (round trip)', () => {
 		const headers = signRequest(FIXED, { method: 'GET' });
 		const created = /created=(\d+)/.exec(headers['Signature-Input'])?.[1];
 		const params = `("@method" "content-digest");created=${created};alg="ecdsa-p256-sha256"`;
@@ -39,7 +40,7 @@ suite('signing', () => {
 		assert.ok(p256.verify(rs, hash, pub));
 	});
 
-	test('isValidTokenFormat accepts hex keys and rejects junk', () => {
+	it('isValidTokenFormat accepts hex keys and rejects junk', () => {
 		assert.ok(isValidTokenFormat(FIXED));
 		assert.ok(isValidTokenFormat(`0x${FIXED}`));
 		assert.ok(!isValidTokenFormat('not-a-token'));
