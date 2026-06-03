@@ -1,0 +1,167 @@
+{
+  "name": "devguard",
+  "displayName": "DevGuard",
+  "description": "Inline npm dependency risk insights (malicious flag, known vulnerabilities, release age, transitive dependency count and OpenSSF scorecard) powered by DevGuard.",
+  "version": "0.0.1",
+  "publisher": "l3montree",
+  "engines": {
+    "vscode": "^1.120.0"
+  },
+  "categories": [
+    "Linters",
+    "Other"
+  ],
+  "keywords": [
+    "devguard",
+    "security",
+    "sca",
+    "sbom",
+    "vulnerabilities",
+    "scorecard",
+    "npm"
+  ],
+  "activationEvents": [
+    "onLanguage:json",
+    "onLanguage:jsonc",
+    "workspaceContains:**/package.json"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "devguard.connect",
+        "title": "DevGuard: Connect (Personal Access Token)"
+      },
+      {
+        "command": "devguard.disconnect",
+        "title": "DevGuard: Disconnect"
+      },
+      {
+        "command": "devguard.selectAsset",
+        "title": "DevGuard: Select Organization / Project / Asset"
+      },
+      {
+        "command": "devguard.refresh",
+        "title": "DevGuard: Refresh Dependency Insights",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "devguard.setupDependencyProxy",
+        "title": "DevGuard: Set Up Dependency Proxy (.npmrc)"
+      },
+      {
+        "command": "devguard.viewSbom",
+        "title": "DevGuard: View SBOM for Selected Asset"
+      },
+      {
+        "command": "devguard.generateSbom",
+        "title": "DevGuard: Generate SBOM (Run devguard-scanner SCA)"
+      }
+    ],
+    "configuration": {
+      "title": "DevGuard",
+      "properties": {
+        "devguard.apiUrl": {
+          "type": "string",
+          "default": "http://localhost:8080",
+          "markdownDescription": "Base URL of the DevGuard backend. Only requests to this host are signed with your personal access token."
+        },
+        "devguard.inlineDecorations.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show inline end-of-line dependency risk badges in package.json."
+        },
+        "devguard.inlineDecorations.verbosity": {
+          "type": "string",
+          "enum": [
+            "compact",
+            "full"
+          ],
+          "enumDescriptions": [
+            "Icons and counts only.",
+            "Also include release age and scorecard score."
+          ],
+          "default": "full",
+          "description": "How much detail to show in the inline badge."
+        },
+        "devguard.request.concurrency": {
+          "type": "number",
+          "default": 6,
+          "minimum": 1,
+          "maximum": 16,
+          "description": "Maximum number of concurrent DevGuard API requests while enriching a package.json."
+        },
+        "devguard.request.timeoutMs": {
+          "type": "number",
+          "default": 8000,
+          "minimum": 1000,
+          "description": "Per-request timeout in milliseconds."
+        },
+        "devguard.cache.ttlMinutes": {
+          "type": "number",
+          "default": 720,
+          "minimum": 1,
+          "description": "How long package inspection results are cached before being refetched."
+        },
+        "devguard.scannerPath": {
+          "type": "string",
+          "default": "devguard-scanner",
+          "description": "Path to the devguard-scanner CLI used by 'Generate SBOM'. Must be on PATH or an absolute path."
+        }
+      }
+    },
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "devguard.connect",
+          "when": "!devguard.connected"
+        },
+        {
+          "command": "devguard.disconnect",
+          "when": "devguard.connected"
+        },
+        {
+          "command": "devguard.selectAsset",
+          "when": "devguard.connected"
+        },
+        {
+          "command": "devguard.viewSbom",
+          "when": "devguard.connected && devguard.assetSelected"
+        },
+        {
+          "command": "devguard.generateSbom",
+          "when": "devguard.connected && devguard.assetSelected"
+        }
+      ],
+      "editor/title": [
+        {
+          "command": "devguard.refresh",
+          "when": "resourceFilename == package.json",
+          "group": "navigation"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src",
+    "test": "vscode-test"
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0.10",
+    "@types/node": "22.x",
+    "@types/vscode": "^1.120.0",
+    "@vscode/test-cli": "^0.0.12",
+    "@vscode/test-electron": "^2.5.2",
+    "eslint": "^9.39.3",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.56.1"
+  },
+  "dependencies": {
+    "@noble/curves": "1.9.7",
+    "jsonc-parser": "3.3.1"
+  }
+}
