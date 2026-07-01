@@ -26,6 +26,13 @@ The inline insights work **without signing in** — they use DevGuard's public p
 
 ## Getting started
 
+### Installation
+
+1. Download the `DevGuard-VS-Code-Companion.vsix` from our [release notes](https://github.com/l3montree-dev/devguard-vs-code-extension/releases).
+2. Open VS-Code and import the downloaded file to VS-Code under the `"Extensions-Tab"` (`Ctrl+K Ctrl+S (Windows/Linux)` or `Cmd+K Cmd+S (Mac)`) > `"..."` > `"Install from VSIX"`
+
+### Using the extension
+
 1. Open a project with a `package.json`. Badges appear automatically (no sign-in required).
 2. Run **DevGuard: Connect (Personal Access Token)** and paste your PAT. It is validated against the backend and stored in VS Code Secret Storage.
 3. Run **DevGuard: Select Organization / Project / Asset** (or click the status-bar item) to connect the workspace to an asset. Hovers then show that asset's open risks per package.
@@ -41,6 +48,8 @@ The inline insights work **without signing in** — they use DevGuard's public p
 | `DevGuard: Set Up Dependency Proxy (.npmrc)` | Point the project's npm registry at DevGuard's dependency proxy, which blocks malicious packages at install time. |
 | `DevGuard: View SBOM for Selected Asset` | Open the connected asset's CycloneDX SBOM as a read-only document. |
 | `DevGuard: Generate SBOM (Run devguard-scanner SCA)` | Run the `devguard-scanner sca` CLI on the project to generate and upload an SBOM to the selected asset, then refresh insights. |
+| `DevGuard: Setup Pre- and Post-Git-Commit-Hooks` | Bootstraps your locale `.git` folder with a pre-commit-hook for secret-scanning and a post-commit-hook for intoto-scanning | 
+| `DevGuard: Removes Pre- and Post-Git-Commit-Hooks that were previously setup by DevGuard` | Removes the pre- and post-commit-hooks that were previously set up using the `devguard.setupGitHooks` command | 
 
 ## Settings
 
@@ -53,6 +62,7 @@ The inline insights work **without signing in** — they use DevGuard's public p
 | `devguard.request.timeoutMs` | `8000` | Per-request timeout. |
 | `devguard.cache.ttlMinutes` | `720` | How long package results are cached. |
 | `devguard.scannerPath` | `devguard-scanner` | Path to the `devguard-scanner` CLI used by "Generate SBOM". |
+| `devguard.sast.enabled` | `true` | Enables automatic sast-scans for file on save |
 
 ## How the version is resolved
 
