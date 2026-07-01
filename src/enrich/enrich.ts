@@ -1,12 +1,16 @@
 import * as path from 'node:path';
 import * as vscode from 'vscode';
 import { DevGuardClient } from '../api/client';
-import { AssetRisk, PackageInfo, PurlInspectResponse, toNpmPurl } from '../api/types';
+import { AssetRisk, PackageInfo, PurlInspectResponse, toNpmPurl, toGolangPurl } from '../api/types';
 import * as config from '../config';
 import { DependencyEntry } from '../packageJson/parse';
 import { loadNearestLockfile } from '../packageJson/lockfile';
 import { resolveVersion } from '../packageJson/resolveVersion';
 import { countTransitive } from '../packageJson/transitive';
+import { loadNearestGoSum } from '../goMod/lockfile';
+import { resolveGoVersion } from '../goMod/resolveVersion';
+import { countGoTransitive } from '../goMod/transitive';
+import { isGoMod } from '../goMod/parse';
 import { InspectSummary, PurlCache } from './cache';
 import { mapWithConcurrency } from './pool';
 import { purlNameKey } from '../utils';
@@ -14,6 +18,10 @@ export { purlNameKey } from '../utils';
 
 /** A per-package map of open risks in the connected asset, keyed by purlNameKey. */
 export type AssetXref = Map<string, AssetRisk>;
+
+type EnrichContext =
+	| { kind: 'npm'; lock: Awaited<ReturnType<typeof loadNearestLockfile>> }
+	| { kind: 'go'; goSum: Awaited<ReturnType<typeof loadNearestGoSum>> };
 
 export class EnrichmentService {
 	constructor(private readonly client: DevGuardClient, private readonly cache: PurlCache) {}
@@ -26,10 +34,13 @@ export class EnrichmentService {
 	): Promise<Map<DependencyEntry, PackageInfo>> {
 		const pkgDir = path.dirname(document.uri.fsPath);
 		const stopDir = vscode.workspace.getWorkspaceFolder(document.uri)?.uri.fsPath;
-		const lock = await loadNearestLockfile(pkgDir, stopDir);
+
+		const enrichContext: EnrichContext = isGoMod(document)
+			? { kind: 'go', goSum: await loadNearestGoSum(pkgDir, stopDir) }
+			: { kind: 'npm', lock: await loadNearestLockfile(pkgDir, stopDir) };
 
 		const infos = await mapWithConcurrency(entries, config.getConcurrency(), (entry) =>
-			this.enrichEntry(entry, pkgDir, lock, signal, assetXref),
+			this.enrichEntry(entry, pkgDir, enrichContext, signal, assetXref),
 		);
 
 		const result = new Map<DependencyEntry, PackageInfo>();
@@ -40,29 +51,36 @@ export class EnrichmentService {
 	private async enrichEntry(
 		entry: DependencyEntry,
 		pkgDir: string,
-		lock: Awaited<ReturnType<typeof loadNearestLockfile>>,
+		ctx: EnrichContext,
 		signal: AbortSignal,
 		assetXref?: AssetXref,
 	): Promise<PackageInfo> {
-		const resolved = await resolveVersion(pkgDir, lock, entry.name, entry.rangeSpec);
-		if (!resolved) {
-			return {
-				name: entry.name,
-				depType: entry.depType,
-				resolvedVersion: entry.rangeSpec,
-				versionSource: 'range',
-				purl: '',
-				status: 'unknown',
-				malicious: null,
-				vulnCount: 0,
-				vulns: [],
-			};
+		let resolvedVersion: string;
+		let versionSource: PackageInfo['versionSource'];
+		let purl: string;
+		let transitiveCount: number | undefined;
+
+		if (ctx.kind === 'go') {
+			const resolved = resolveGoVersion(ctx.goSum, entry.name, entry.rangeSpec);
+			if (!resolved) {
+				return unknownEntry(entry);
+			}
+			resolvedVersion = resolved.version;
+			versionSource = resolved.source;
+			purl = toGolangPurl(entry.name, resolvedVersion);
+			transitiveCount = countGoTransitive();
+		} else {
+			const resolved = await resolveVersion(pkgDir, ctx.lock, entry.name, entry.rangeSpec);
+			if (!resolved) {
+				return unknownEntry(entry);
+			}
+			resolvedVersion = resolved.version;
+			versionSource = resolved.source;
+			purl = toNpmPurl(entry.name, resolvedVersion);
+			transitiveCount = countTransitive(ctx.lock, entry.name);
 		}
 
-		const purl = toNpmPurl(entry.name, resolved.version);
-		const transitiveCount = countTransitive(lock, entry.name);
 		const assetRisk = assetXref?.get(purlNameKey(purl));
-
 		let summary = this.cache.get(purl);
 		if (!summary) {
 			try {
@@ -73,8 +91,8 @@ export class EnrichmentService {
 				return {
 					name: entry.name,
 					depType: entry.depType,
-					resolvedVersion: resolved.version,
-					versionSource: resolved.source,
+					resolvedVersion,
+					versionSource,
 					purl,
 					status: 'offline',
 					malicious: null,
@@ -89,8 +107,8 @@ export class EnrichmentService {
 		return {
 			name: entry.name,
 			depType: entry.depType,
-			resolvedVersion: resolved.version,
-			versionSource: resolved.source,
+			resolvedVersion,
+			versionSource,
 			purl,
 			status: 'ok',
 			malicious: summary.malicious,
@@ -104,6 +122,20 @@ export class EnrichmentService {
 			assetRisk,
 		};
 	}
+}
+
+function unknownEntry(entry: DependencyEntry): PackageInfo {
+	return {
+		name: entry.name,
+		depType: entry.depType,
+		resolvedVersion: entry.rangeSpec,
+		versionSource: 'range',
+		purl: '',
+		status: 'unknown',
+		malicious: null,
+		vulnCount: 0,
+		vulns: [],
+	};
 }
 
 function distill(resp: PurlInspectResponse): InspectSummary {

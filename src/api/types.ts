@@ -115,10 +115,12 @@ export interface DependencyVulnFlat {
 // --- View model the UI consumes ---
 
 export type DepType =
-	| 'dependencies'
-	| 'devDependencies'
-	| 'optionalDependencies'
-	| 'peerDependencies';
+    | 'dependencies'
+    | 'devDependencies'
+    | 'optionalDependencies'
+    | 'peerDependencies'
+    | 'goDirectDependency'
+    | 'goIndirectDependency';
 
 export type VersionSource = 'lockfile' | 'node_modules' | 'range';
 
@@ -163,3 +165,10 @@ export function toNpmPurl(name: string, version: string): string {
 export function encodePurlForPath(purl: string): string {
 	return encodeURIComponent(purl);
 }
+
+// Add this alongside toNpmPurl in api/types.ts:
+// pkg:golang/github.com/gin-gonic/gin@v1.9.1
+export function toGolangPurl(modulePath: string, version: string): string {
+	return `pkg:golang/${modulePath}@${version}`;
+}
+ 
