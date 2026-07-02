@@ -1,8 +1,8 @@
 {
   "name": "devguard",
   "displayName": "DevGuard",
-  "description": "Inline npm dependency risk insights (malicious flag, known vulnerabilities, release age, transitive dependency count and OpenSSF scorecard) powered by DevGuard.",
-  "version": "0.0.1",
+  "description": "Inline dependency risk insights for npm and go (malicious flag, known vulnerabilities, release age, transitive dependency count and OpenSSF scorecard), dependency proxy setup, Git-hooks setup and background SAST scan on-save. Powered by DevGuard.",
+  "version": "0.1.1",
   "publisher": "l3montree",
   "engines": {
     "vscode": "^1.120.0"
@@ -60,11 +60,11 @@
       },
       {
         "command": "devguard.setupGitHooks",
-        "title": "DevGuard: Setup Pre- and Post-Git-Commit-Hooks"
+        "title": "DevGuard: Setup Pre-Commit-Hooks for git"
       },
       {
         "command": "devguard.removeGitHooks",
-        "title": "DevGuard: Removes Pre- and Post-Git-Commit-Hooks that were previously setup by DevGuard"
+        "title": "DevGuard: Removes Pre-Commit-Hooks for git that were previously setup by DevGuard"
       }
     ],
     "configuration": {
@@ -72,7 +72,7 @@
       "properties": {
         "devguard.apiUrl": {
           "type": "string",
-          "default": "http://localhost:8080",
+          "default": "http://api.main.devguard.org",
           "markdownDescription": "Base URL of the DevGuard backend. Only requests to this host are signed with your personal access token."
         },
         "devguard.inlineDecorations.enabled": {
@@ -118,13 +118,9 @@
           "description": "Path to the devguard-scanner CLI used by 'Generate SBOM'. Must be on PATH or an absolute path."
         },
         "devguard.sast.enabled": {
-
           "type": "boolean",
-
           "default": true,
-
           "description": "Enable SAST and IaC scanning."
-
         }
       }
     },

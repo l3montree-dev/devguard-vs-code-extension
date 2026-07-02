@@ -42,7 +42,6 @@ export class SastController implements vscode.Disposable {
 
     const repoRoot = this.resolveRepoRoot(document);
 
-    this.logger.show();
     this.logger.info(`Running ${kind} scan for ${document.uri.fsPath}...`);
 
     try {

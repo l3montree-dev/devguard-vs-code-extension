@@ -1,6 +1,5 @@
 import * as vscode from "vscode";
 import fs from "fs/promises";
-import * as config from "./config";
 import { AssetSelection } from "./selection";
 
 const workspaceFolders = vscode.workspace.workspaceFolders;
@@ -54,7 +53,7 @@ export async function removeExistingGitHooks(): Promise<void> {
 
     await fs.writeFile(gitPreCommitHookFilePath, resultFileContent, "utf8");
 
-    content = await fs.readFile(gitPostCommitHookFilePath, "utf8");
+    /* content = await fs.readFile(gitPostCommitHookFilePath, "utf8");
     resultFileContent = content;
     linesHead = content.split("\n" + setupCommentHead);
     linesTail = [];
@@ -64,7 +63,7 @@ export async function removeExistingGitHooks(): Promise<void> {
         resultFileContent = linesHead[0] + linesTail[1];
       }
     }
-    await fs.writeFile(gitPostCommitHookFilePath, resultFileContent, "utf8");
+    await fs.writeFile(gitPostCommitHookFilePath, resultFileContent, "utf8"); */
   } catch (err: any) {
     if (!(err.code === "ENOENT")) {
       vscode.window.showErrorMessage(
@@ -78,16 +77,9 @@ export async function removeExistingGitHooks(): Promise<void> {
 export async function setupGitCommitHooks(
   selection: AssetSelection,
 ): Promise<void> {
-  const apiUrl = config.getApiUrl();  
-  const sel = selection.getSelected();
-  if (!sel) {
-    vscode.window.showInformationMessage("DevGuard: select an asset first.");
-    return;
-  }
-  const assetKey = `${sel.orgSlug}/projects/${sel.projectSlug}/assets/${sel.assetSlug}/${sel.refSlug}`;
-  const secretScanningCommand = `docker run --rm -v "$(pwd):/repo" ghcr.io/l3montree-dev/devguard/scanner secret-scanning --apiURL=${apiUrl} --assetName=${assetKey} --path="/repo" --dir \n`;
+  const secretScanningCommand = `docker run --rm -v "$(pwd):/repo" ghcr.io/l3montree-dev/devguard/scanner:main devguard-scanner secret-scanning --path="/repo" --dir \n`;
 
-  const intotoScanningCommand = `docker run --rm -v "$(pwd):/repo" ghcr.io/l3montree-dev/devguard/scanner intoto run --apiURL=${apiUrl} --assetName=${assetKey} \n`;
+  const intotoScanningCommand = `docker run --rm -v "$(pwd):/repo" ghcr.io/l3montree-dev/devguard/scanner:main devguard-scanner intoto run --step=post-commit \n`;
 
   try {
     const stat = await fs.stat(gitHooksFolder);
@@ -127,7 +119,7 @@ export async function setupGitCommitHooks(
     return;
   }
 
-  await fs.appendFile(
+  /* await fs.appendFile(
     gitPostCommitHookFilePath,
     "\n" + setupCommentHead + intotoScanningCommand + setupCommentTail,
     "utf8",
@@ -140,7 +132,7 @@ export async function setupGitCommitHooks(
       `Could not change file permissions of $(gitPostCommitHookFilePath)`,
     );
     return;
-  }
+  } */
 }
 
 async function commitHookExists(hookfile: string): Promise<boolean> {
@@ -171,9 +163,9 @@ async function commitHookExists(hookfile: string): Promise<boolean> {
 }
 
 export async function preCommitHooksExists(): Promise<boolean> {
-    return commitHookExists(gitPreCommitHookFilePath) 
+  return commitHookExists(gitPreCommitHookFilePath);
 }
 
 export async function postCommitHooksExists(): Promise<boolean> {
-    return commitHookExists(gitPostCommitHookFilePath) 
+  return commitHookExists(gitPostCommitHookFilePath);
 }

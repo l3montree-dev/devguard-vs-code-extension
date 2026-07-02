@@ -16,7 +16,7 @@ import { DecorationManager } from "./ui/decorations";
 import { DevGuardHoverProvider } from "./ui/hover";
 import { StatusBar } from "./ui/statusBar";
 import { StatusBarCommitHooks } from "./ui/statusBarCommitHooks";
-import { preCommitHooksExists, postCommitHooksExists } from "./commitHooks";
+import { preCommitHooksExists, /* postCommitHooksExists */ } from "./commitHooks";
 import { SastController } from "./sast/controller";
 
 export async function activate(
@@ -53,7 +53,7 @@ export async function activate(
     });
   updateStatus();
 
-  if ((await preCommitHooksExists()) && (await postCommitHooksExists())) {
+  if ((await preCommitHooksExists()) /* && (await postCommitHooksExists()) */) {
     statusBarCommitHooks.setActive(true);
   } else {
     statusBarCommitHooks.setActive(false);

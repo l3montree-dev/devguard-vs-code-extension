@@ -53,8 +53,6 @@ export async function runDockerScanner(
     `--outputPath=${outputPathInContainer}`,
   ];
 
-  console.log(args)
-
   const cleanup = async (): Promise<void> => {
     try {
       await fs.unlink(outputPathOnHost);

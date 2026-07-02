@@ -19,7 +19,7 @@ import {
   removeExistingGitHooks,
   setupGitCommitHooks,
   preCommitHooksExists,
-  postCommitHooksExists,
+  //postCommitHooksExists,
 } from "./commitHooks";
 import { StatusBarCommitHooks } from "./ui/statusBarCommitHooks";
 
@@ -445,7 +445,7 @@ async function setupGitHooks({
   commitHookStatusBar,
 }: CommandDeps): Promise<void> {
   await setupGitCommitHooks(selection);
-  if ((await preCommitHooksExists()) && (await postCommitHooksExists())) {
+  if ((await preCommitHooksExists()) /* && (await postCommitHooksExists()) */) {
     commitHookStatusBar.setActive(true);
   } else {
     commitHookStatusBar.setActive(false);
@@ -459,7 +459,7 @@ async function removeGitHooks({
   commitHookStatusBar,
 }: CommandDeps): Promise<void> {
   await removeExistingGitHooks();
-  if ((await preCommitHooksExists()) && (await postCommitHooksExists())) {
+  if ((await preCommitHooksExists())/*  && (await postCommitHooksExists()) */) {
     commitHookStatusBar.setActive(true);
   } else {
     commitHookStatusBar.setActive(false);
