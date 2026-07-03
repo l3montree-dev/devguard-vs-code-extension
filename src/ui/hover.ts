@@ -3,12 +3,13 @@ import { PackageInfo, ScoreCardCheck } from '../api/types';
 import { InsightStore } from '../insightStore';
 import { isPackageJson } from '../packageJson/parse';
 import { formatPublished, formatScore } from './format';
+import { isGoMod } from '../goMod/parse';
 
 export class DevGuardHoverProvider implements vscode.HoverProvider {
 	constructor(private readonly store: InsightStore) {}
 
 	provideHover(document: vscode.TextDocument, position: vscode.Position): vscode.ProviderResult<vscode.Hover> {
-		if (!isPackageJson(document)) {
+		if (!isPackageJson(document) && !isGoMod(document)) {
 			return undefined;
 		}
 		const info = this.store.infoAt(document.uri, position);
@@ -58,6 +59,9 @@ function renderHover(info: PackageInfo): vscode.MarkdownString {
 
 	lines.push(`$(history) Released: ${formatPublished(info.published)}`);
 
+	// Transitive count is only shown when available. For Go modules it is
+	// omitted entirely because go.sum does not contain graph edges —
+	// showing a count would require running `go mod graph`.
 	if (typeof info.transitiveCount === 'number') {
 		lines.push(`$(package) Transitive dependencies: **${info.transitiveCount}** (from package-lock.json)`);
 	}
@@ -100,13 +104,16 @@ function failingChecks(checks?: ScoreCardCheck[]): ScoreCardCheck[] {
 }
 
 function versionSourceLabel(info: PackageInfo): string {
-	switch (info.versionSource) {
-		case 'lockfile':
-			return 'package-lock.json';
-		case 'node_modules':
-			return 'installed node_modules';
+	switch (info.depType) {
+		case 'goDirectDependency':
+		case 'goIndirectDependency':
+			return info.versionSource === 'lockfile' ? 'go.sum' : 'go.mod (approximate)';
 		default:
-			return 'package.json range (approximate)';
+			switch (info.versionSource) {
+				case 'lockfile':   return 'package-lock.json';
+				case 'node_modules': return 'installed node_modules';
+				default:           return 'package.json range (approximate)';
+			}
 	}
 }
 
@@ -126,7 +133,6 @@ function escape(text: string): string {
 	return text.replace(/[\\`*_{}[\]()#+\-.!|<>]/g, (m) => `\\${m}`);
 }
 
-/** Wraps text in an inline code span (backslashes are literal inside, so no escaping — just strip backticks). */
 function code(text: string): string {
 	return `\`${text.replace(/`/g, '')}\``;
 }

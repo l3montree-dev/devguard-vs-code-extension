@@ -5,14 +5,27 @@ import { AssetXref } from './enrich/enrich';
 import { EnrichmentService } from './enrich/enrich';
 import { DocInsights, InsightStore } from './insightStore';
 import { Logger } from './logger';
-import { isPackageJson, parseDependencies, parseSections } from './packageJson/parse';
+import { isPackageJson, parseDependencies as parsePackageJsonDeps, parseSections as parsePackageJsonSections } from './packageJson/parse';
+import { isGoMod, parseDependencies as parseGoModDeps, parseSections as parseGoModSections } from './goMod/parse';
 import { AssetSelection } from './selection';
 import { DecorationManager } from './ui/decorations';
 
 const DEBOUNCE_MS = 400;
 
+function isSupportedDocument(document: vscode.TextDocument): boolean {
+	return isPackageJson(document) || isGoMod(document);
+}
+
+function parseDependencies(document: vscode.TextDocument) {
+	return isGoMod(document) ? parseGoModDeps(document) : parsePackageJsonDeps(document);
+}
+
+function parseSections(document: vscode.TextDocument) {
+	return isGoMod(document) ? parseGoModSections(document) : parsePackageJsonSections(document);
+}
+
 /**
- * Orchestrates refreshes: parse package.json, enrich its dependencies and render
+ * Orchestrates refreshes: parse package.json / go.mod, enrich its dependencies and render
  * decorations. Debounced per document, with a generation counter + AbortController
  * so superseded refreshes are cancelled and their stale results dropped.
  */
@@ -32,7 +45,7 @@ export class InsightController  {
 
 	/** Debounced refresh, used while the user types. */
 	scheduleRefresh(document: vscode.TextDocument): void {
-		if (!isPackageJson(document)) {
+		if (!isSupportedDocument(document)) {
 			return;
 		}
 		const key = document.uri.toString();
@@ -49,12 +62,12 @@ export class InsightController  {
 		);
 	}
 
-	/** Refreshes every visible package.json (e.g. on activate or after connecting). */
+	/** Refreshes every visible package.json / go.mod (e.g. on activate or after connecting). */
 	refreshVisible(): void {
 		const seen = new Set<string>();
 		for (const editor of vscode.window.visibleTextEditors) {
 			const key = editor.document.uri.toString();
-			if (isPackageJson(editor.document) && !seen.has(key)) {
+			if (isSupportedDocument(editor.document) && !seen.has(key)) {
 				seen.add(key);
 				void this.refreshDocument(editor.document);
 			}
@@ -62,7 +75,7 @@ export class InsightController  {
 	}
 
 	async refreshDocument(document: vscode.TextDocument): Promise<void> {
-		if (!isPackageJson(document)) {
+		if (!isSupportedDocument(document)) {
 			return;
 		}
 		const key = document.uri.toString();

@@ -4,9 +4,9 @@
 > **Proof of Concept** This integration is not yet production-ready. It is intended for experimentation and feedback only.
 
 
-Inline npm dependency-risk insights in your `package.json`, powered by [DevGuard](https://devguard.org).
+Inline dependency risk insights for npm and go (malicious flag, known vulnerabilities, release age, transitive dependency count and OpenSSF scorecard), dependency proxy setup, Git-hooks setup and background SAST scan on-save. Powered by [DevGuard](https://devguard.org).
 
-While you edit `package.json`, each dependency gets a **color-coded** end-of-line badge (red = malicious / low scorecard, amber = vulnerabilities / weak scorecard / stale, green = clean) and a rich hover card showing:
+While you edit `package.json` and `go.mod`, each dependency gets a **color-coded** end-of-line badge (red = malicious / low scorecard, amber = vulnerabilities / weak scorecard / stale, green = clean) and a rich hover card showing:
 
 - **⚠ malicious** — whether the package version is flagged in DevGuard's malicious-package feed
 - **known vulnerabilities** — count of CVEs affecting the resolved version (with IDs and fixed versions)
@@ -21,12 +21,20 @@ The inline insights work **without signing in** — they use DevGuard's public p
 
 ## Requirements
 
-- A DevGuard backend. For local development this defaults to `http://localhost:8080` (configurable via `devguard.apiUrl`).
-- For asset selection / SBOM / asset overlays: a DevGuard **personal access token** (PAT).
+- Docker
+- A DevGuard backend
+- For asset selection / SBOM / asset overlays: a DevGuard **personal access token** (PAT)
 
 ## Getting started
 
-1. Open a project with a `package.json`. Badges appear automatically (no sign-in required).
+### Installation
+
+1. Download the `DevGuard-VS-Code-Companion.vsix` from our [release notes](https://github.com/l3montree-dev/devguard-vs-code-extension/releases).
+2. Open VS-Code and import the downloaded file to VS-Code under the `"Extensions-Tab"` (`Ctrl+K Ctrl+S (Windows/Linux)` or `Cmd+K Cmd+S (Mac)`) > `"..."` > `"Install from VSIX"`. Alternatively drag-and-drop the file into the extension-tab.
+
+### Using the extension
+5
+1. Open a project with a `package.json` or `go.mod`. Badges appear automatically (no sign-in required).
 2. Run **DevGuard: Connect (Personal Access Token)** and paste your PAT. It is validated against the backend and stored in VS Code Secret Storage.
 3. Run **DevGuard: Select Organization / Project / Asset** (or click the status-bar item) to connect the workspace to an asset. Hovers then show that asset's open risks per package.
 
@@ -37,10 +45,12 @@ The inline insights work **without signing in** — they use DevGuard's public p
 | `DevGuard: Connect (Personal Access Token)` | Store and validate a PAT. |
 | `DevGuard: Disconnect` | Remove the stored token and asset selection. |
 | `DevGuard: Select Organization / Project / Asset` | Pick the asset to overlay. |
-| `DevGuard: Refresh Dependency Insights` | Clear the cache and re-fetch for visible `package.json` files. |
+| `DevGuard: Refresh Dependency Insights` | Clear the cache and re-fetch for visible `package.json` and `go.mod` files. |
 | `DevGuard: Set Up Dependency Proxy (.npmrc)` | Point the project's npm registry at DevGuard's dependency proxy, which blocks malicious packages at install time. |
 | `DevGuard: View SBOM for Selected Asset` | Open the connected asset's CycloneDX SBOM as a read-only document. |
 | `DevGuard: Generate SBOM (Run devguard-scanner SCA)` | Run the `devguard-scanner sca` CLI on the project to generate and upload an SBOM to the selected asset, then refresh insights. |
+| `DevGuard: Setup Pre-Git-Commit-Hooks` | Bootstraps your locale `.git` folder with a pre-commit-hook for secret-scanning | 
+| `DevGuard: Removes Pre-Git-Commit-Hooks that were previously setup by DevGuard` | Removes the pre-commit-hooks that were previously set up using the `devguard.setupGitHooks` command | 
 
 ## Settings
 
@@ -53,6 +63,7 @@ The inline insights work **without signing in** — they use DevGuard's public p
 | `devguard.request.timeoutMs` | `8000` | Per-request timeout. |
 | `devguard.cache.ttlMinutes` | `720` | How long package results are cached. |
 | `devguard.scannerPath` | `devguard-scanner` | Path to the `devguard-scanner` CLI used by "Generate SBOM". |
+| `devguard.sast.enabled` | `true` | Enables automatic sast-scans for file on save |
 
 ## How the version is resolved
 
@@ -67,4 +78,9 @@ For accurate per-version data, the extension resolves each dependency to a concr
 
 ## Privacy
 
-Package names and versions from your `package.json` are sent to the configured DevGuard backend to look up risk data. With a local backend (`localhost:8080`) this stays on your machine.
+Package names and versions from your `package.json` and `go.mod` are sent to the configured DevGuard backend to look up risk data. With a local backend (`localhost:8080`) this stays on your machine.
+
+
+## Let us know what you think
+
+If you have question, comments or feedback, you can join our [discussion on GitHub](https://github.com/l3montree-dev/devguard/discussions/2207).

@@ -1,0 +1,48 @@
+name: Build and Release VS Code Extension
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install VSCE
+        run: npm install -g @vscode/vsce
+
+      - name: Package extension
+        run: vsce package
+
+      - name: Rename VSIX
+        id: vsix
+        run: |
+          file=$(ls *.vsix | head -n1)
+          mv "$file" DevGuard-VS-Code-Companion.vsix
+          echo "file=DevGuard-VS-Code-Companion.vsix" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@de2c0eb89ae2a093876385947365aca7b0e5f844
+        with:
+          files: ${{ steps.vsix.outputs.file }}
+          generate_release_notes: true
