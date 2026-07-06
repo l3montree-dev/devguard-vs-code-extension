@@ -72,7 +72,7 @@
       "properties": {
         "devguard.apiUrl": {
           "type": "string",
-          "default": "http://api.main.devguard.org",
+          "default": "https://api.main.devguard.org",
           "markdownDescription": "Base URL of the DevGuard backend. Only requests to this host are signed with your personal access token."
         },
         "devguard.inlineDecorations.enabled": {
