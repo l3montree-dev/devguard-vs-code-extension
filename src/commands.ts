@@ -444,29 +444,41 @@ async function setupGitHooks({
   selection,
   commitHookStatusBar,
 }: CommandDeps): Promise<void> {
-  await setupGitCommitHooks(selection);
-  if ((await preCommitHooksExists()) /* && (await postCommitHooksExists()) */) {
-    commitHookStatusBar.setActive(true);
-  } else {
-    commitHookStatusBar.setActive(false);
+  try {
+    await removeExistingGitHooks();
+    if (
+      await preCommitHooksExists() /*  && (await postCommitHooksExists()) */
+    ) {
+      commitHookStatusBar.setActive(true);
+    } else {
+      commitHookStatusBar.setActive(false);
+    }
+    vscode.window.showInformationMessage(
+      `Git Hooks have been removed successfully from ${gitPreCommitHookFilePath} and ${gitPostCommitHookFilePath}.`,
+    );
+  } catch {
+    return;
   }
-  vscode.window.showInformationMessage(
-    `Git Hooks have been added successfully under ${gitPreCommitHookFilePath} and ${gitPostCommitHookFilePath}`,
-  );
 }
 
 async function removeGitHooks({
   commitHookStatusBar,
 }: CommandDeps): Promise<void> {
-  await removeExistingGitHooks();
-  if ((await preCommitHooksExists())/*  && (await postCommitHooksExists()) */) {
-    commitHookStatusBar.setActive(true);
-  } else {
-    commitHookStatusBar.setActive(false);
+  try {
+    await removeExistingGitHooks();
+    if (
+      await preCommitHooksExists() /*  && (await postCommitHooksExists()) */
+    ) {
+      commitHookStatusBar.setActive(true);
+    } else {
+      commitHookStatusBar.setActive(false);
+    }
+    vscode.window.showInformationMessage(
+      `Git Hooks have been removed successfully from ${gitPreCommitHookFilePath} and ${gitPostCommitHookFilePath}.`,
+    );
+  } catch {
+    return;
   }
-  vscode.window.showInformationMessage(
-    `Git Hooks have been removed successfully from ${gitPreCommitHookFilePath} and ${gitPostCommitHookFilePath}.`,
-  );
 }
 
 /** Replaces an existing `registry=` line or appends one, preserving other lines. */

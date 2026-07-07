@@ -36,7 +36,7 @@ export async function removeExistingGitHooks(): Promise<void> {
         `An error occured during git check. Could not check if git repository is present in workspace.`,
       );
     }
-    return;
+    throw err;
   }
 
   try {
@@ -69,8 +69,8 @@ export async function removeExistingGitHooks(): Promise<void> {
       vscode.window.showErrorMessage(
         `An error occured during git check. Could not check if git hook is present in workspace.`,
       );
-      return;
     }
+    throw err;
   }
 }
 
@@ -99,7 +99,7 @@ export async function setupGitCommitHooks(
         `An error occured during git check. Could not check if git repository is present in workspace.`,
       );
     }
-    return;
+    throw err;
   }
 
   await removeExistingGitHooks();
