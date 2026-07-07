@@ -45,17 +45,9 @@ export class SastController implements vscode.Disposable {
     this.logger.info(`Running ${kind} scan for ${document.uri.fsPath}...`);
 
     try {
-      const result = await vscode.window.withProgress<DockerScanResult>(
-        {
-          location: vscode.ProgressLocation.Notification,
-          title: `DevGuard: running ${kind.toUpperCase()} scan...`,
-          cancellable: true,
-        },
-        async (_progress, cancelToken) => {
-          cancelToken.onCancellationRequested(() => controller.abort());
-
-          return runDockerScanner({ kind, signal: controller.signal }, document.uri);
-        },
+      const result = await runDockerScanner(
+        { kind, signal: controller.signal },
+        document.uri,
       );
 
       if (this.inflight.get(key) !== controller) {
@@ -93,9 +85,7 @@ export class SastController implements vscode.Disposable {
       );
 
       if (result.exitCode !== 0) {
-        this.logger.info(
-          `DevGuard ${kind} scanner exited ${result.exitCode}.`,
-        );
+        this.logger.info(`DevGuard ${kind} scanner exited ${result.exitCode}.`);
       }
     } catch (err) {
       if ((err as Error).message === "Docker scan aborted") {
