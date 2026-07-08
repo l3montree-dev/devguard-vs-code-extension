@@ -22,6 +22,7 @@ import {
   //postCommitHooksExists,
 } from "./commitHooks";
 import { StatusBarCommitHooks } from "./ui/statusBarCommitHooks";
+import os from "os";
 
 export interface CommandDeps {
   client: DevGuardClient;
@@ -56,6 +57,9 @@ export function registerCommands(deps: CommandDeps): vscode.Disposable[] {
     }),
     vscode.commands.registerCommand("devguard.removeGitHooks", () => {
       removeGitHooks(deps);
+    }),
+    vscode.commands.registerCommand("devguard.generateVEX", () => {
+      generateVEX(deps);
     }),
   ];
 }
@@ -522,5 +526,93 @@ function reportError(action: string, err: unknown, logger: Logger): void {
   }
   vscode.window.showErrorMessage(
     `DevGuard: failed to ${action} (see DevGuard output).`,
+  );
+}
+
+async function generateVEX({
+  logger,
+  sbomProvider,
+}: CommandDeps): Promise<void> {
+  const repoPath =
+    vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? process.cwd();
+  const outputName = `.devguard-vex-${crypto.randomUUID()}`;
+
+  // Token is passed via DEVGUARD_TOKEN env (not argv) so it does not appear in the process list.
+  const args = [
+    "run",
+    "--rm",
+    "-v",
+    `${repoPath}:/repo`,
+    "-v",
+    `${os.tmpdir()}:${"/tmp"}`,
+    "ghcr.io/l3montree-dev/devguard/scanner:main",
+    "devguard-scanner",
+    "sca",
+    "--path=/repo",
+    "--output",
+    "cyclonedx",
+  ];
+
+  logger.info(`Running SCA scan to generate VEX …`);
+
+  let output = "";
+  const capture = (chunk: Buffer): void => {
+    const text = chunk.toString();
+    output = text.slice(-8000);
+  };
+
+  const exitCode = await vscode.window.withProgress<number | undefined>(
+    {
+      location: vscode.ProgressLocation.Notification,
+      title: `DevGuard: Generating VEX …`,
+      cancellable: true,
+    },
+    (_progress, cancelToken) =>
+      new Promise<number | undefined>((resolve) => {
+        let child: ReturnType<typeof spawn> | undefined;
+        try {
+          child = spawn("docker", args);
+        } catch (err) {
+          logger.error("could not start the scanner", err);
+          resolve(undefined);
+          return;
+        }
+        cancelToken.onCancellationRequested(() => child?.kill());
+        child.stdout?.on("data", capture);
+        child.stderr?.on("data", capture);
+        child.on("error", (err) => {
+          logger.error("scanner process error", err);
+          resolve(undefined);
+        });
+        child.on("close", (code) => resolve(code ?? undefined));
+      }),
+  );
+
+  if (exitCode === undefined) {
+    vscode.window.showErrorMessage(
+      `DevGuard: could not run SCA scan. Install the devguard-scanner CLI or set devguard.scannerPath.`,
+    );
+    return;
+  }
+  if (exitCode === 0) {
+    let cdxjson = output;
+    try {
+      cdxjson = JSON.stringify(JSON.parse(output), null, 2);
+    } catch {}
+    await sbomProvider.open(outputName, cdxjson);
+    const successMessage = "DevGuard: SCA complete — VEX generated .";
+    logger.info(successMessage);
+    vscode.window.showInformationMessage(successMessage);
+    return;
+  }
+  // Since we use the normal sca scan, this error check applies here as well as for generateSBOM()
+  if (/invalid specification version|not a valid CycloneDX/i.test(output)) {
+    vscode.window.showErrorMessage(
+      "DevGuard: the generated VEX used a CycloneDX version the scanner could not read. Rebuild devguard-scanner from source (go install ./cmd/devguard-scanner) or align your trivy version, then retry.",
+    );
+    return;
+  }
+  vscode.window.showWarningMessage(
+    `DevGuard: scanner exited with code ${exitCode} (see the DevGuard output). Insights refreshed.`,
   );
 }
