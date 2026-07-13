@@ -65,6 +65,10 @@
       {
         "command": "devguard.removeGitHooks",
         "title": "DevGuard: Removes Pre-Commit-Hooks for git that were previously setup by DevGuard"
+      },
+      {
+        "command": "devguard.generateVEX",
+        "title": "DevGuard: Generate VEX (Run devguard-scanner SCA)"
       }
     ],
     "configuration": {
