@@ -449,7 +449,7 @@ async function setupGitHooks({
   commitHookStatusBar,
 }: CommandDeps): Promise<void> {
   try {
-    await removeExistingGitHooks();
+    await setupGitCommitHooks(selection);
     if (
       await preCommitHooksExists() /*  && (await postCommitHooksExists()) */
     ) {
