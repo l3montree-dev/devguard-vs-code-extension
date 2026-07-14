@@ -16,8 +16,17 @@ import { DecorationManager } from "./ui/decorations";
 import { DevGuardHoverProvider } from "./ui/hover";
 import { StatusBar } from "./ui/statusBar";
 import { StatusBarCommitHooks } from "./ui/statusBarCommitHooks";
-import { preCommitHooksExists, /* postCommitHooksExists */ } from "./commitHooks";
+import {
+  preCommitHooksExists /* postCommitHooksExists */,
+} from "./commitHooks";
 import { SastController } from "./sast/controller";
+import {
+  findVexFile,
+  watchVexFile,
+  STATUS_OPTIONS,
+  VEXVuln,
+} from "./vexEditor/vex";
+import { VexTreeProvider } from "./vexEditor/treeDataProvider";
 
 export async function activate(
   context: vscode.ExtensionContext,
@@ -42,6 +51,18 @@ export async function activate(
     logger,
   );
   const sast = new SastController(logger);
+  const vexUri = await findVexFile();
+  vscode.commands.executeCommand(
+    "setContext",
+    "devguard.vexFileFound",
+    !!vexUri,
+  );
+
+  const provider = new VexTreeProvider(vexUri);
+  await provider.setVexUri(vexUri);
+  const treeView = vscode.window.createTreeView("devguard-vex-editor", {
+    treeDataProvider: provider,
+  });
 
   await connection.init();
   await selection.init();
@@ -53,7 +74,7 @@ export async function activate(
     });
   updateStatus();
 
-  if ((await preCommitHooksExists()) /* && (await postCommitHooksExists()) */) {
+  if (await preCommitHooksExists() /* && (await postCommitHooksExists()) */) {
     statusBarCommitHooks.setActive(true);
   } else {
     statusBarCommitHooks.setActive(false);
@@ -74,6 +95,64 @@ export async function activate(
     selection,
     controller,
     sast,
+    treeView,
+    watchVexFile(async () => {
+      const newVexFile = await findVexFile();
+      vscode.commands.executeCommand(
+        "setContext",
+        "devguard.vexFileFound",
+        !!newVexFile,
+      );
+      await provider.setVexUri(newVexFile);
+    }),
+    vscode.commands.registerCommand(
+      "devguard.setVexStatus",
+      async (vuln: VEXVuln) => {
+        const picked = await vscode.window.showQuickPick(
+          STATUS_OPTIONS.map((o) => ({
+            ...o,
+            picked: o.value === vuln.status,
+          })),
+          {
+            placeHolder: `Set status for ${vuln.packageName} - ${vuln.vulnID}`,
+            title: "DevGuard: VEX Status",
+          },
+        );
+        if (!picked) return;
+
+        const placeHolderMessage =
+          picked.value === "affected"
+            ? "e.g. Vulnerable code is called during execution"
+            : "e.g. Vulnerable code path is not reachable from our usage";
+
+        let justification = await vscode.window.showInputBox({
+          title: "DevGuard: Justification",
+          prompt: `Why is ${vuln.packageName} - ${vuln.vulnID} marked as "${picked.label}"?`,
+          placeHolder: vuln.justificationDetail
+            ? `Previously: ${vuln.justificationDetail}`
+            : placeHolderMessage,
+          ignoreFocusOut: true,
+        });
+
+        justification = justification?.trim();
+
+        if (justification === undefined) return;
+
+        if (justification === "") {
+          vscode.window.showErrorMessage(
+            "DevGuard VEX-Editor: Please provide a justification for your assessment.",
+          );
+          return;
+        }
+
+        vuln.status = picked.value;
+        vuln.justificationDetail = justification;
+
+        vuln.status = picked.value;
+        provider.persist(vuln);
+        provider.refresh();
+      },
+    ),
     new vscode.Disposable(() => cache.dispose()),
     vscode.languages.registerHoverProvider(
       hoverSelector,

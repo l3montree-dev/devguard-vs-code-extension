@@ -28,6 +28,30 @@
   ],
   "main": "./out/extension.js",
   "contributes": {
+    "viewsWelcome": [
+      {
+        "view": "devguard-vex-editor",
+        "contents": "There are no VEX documents in your project. Add a VEX Document to your workspace to trigger the extension."
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "devguard-vex-editor-view-container",
+          "title": "DevGuard",
+          "icon": "public/assets/devguard.svg"
+        }
+      ]
+    },
+    "views": {
+      "devguard-vex-editor-view-container": [
+        {
+          "id": "devguard-vex-editor",
+          "name": "DevGuard VEX Editor",
+          "icon": "public/assets/devguard.svg"
+        }
+      ]
+    },
     "commands": [
       {
         "command": "devguard.connect",
@@ -69,6 +93,10 @@
       {
         "command": "devguard.generateVEX",
         "title": "DevGuard: Generate VEX (Run devguard-scanner SCA)"
+      },
+      {
+        "command": "devguard.setVexStatus",
+        "title": "DevGuard: Set VEX Status"
       }
     ],
     "configuration": {
