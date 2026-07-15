@@ -52,12 +52,6 @@ export async function activate(
   );
   const sast = new SastController(logger);
   const vexUri = await findVexFile();
-  vscode.commands.executeCommand(
-    "setContext",
-    "devguard.vexFileFound",
-    !!vexUri,
-  );
-
   const provider = new VexTreeProvider(vexUri);
   await provider.setVexUri(vexUri);
   const treeView = vscode.window.createTreeView("devguard-vex-editor", {
@@ -98,11 +92,6 @@ export async function activate(
     treeView,
     watchVexFile(async () => {
       const newVexFile = await findVexFile();
-      vscode.commands.executeCommand(
-        "setContext",
-        "devguard.vexFileFound",
-        !!newVexFile,
-      );
       await provider.setVexUri(newVexFile);
     }),
     vscode.commands.registerCommand(
