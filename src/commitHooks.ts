@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
 import fs from "fs/promises";
-import { AssetSelection } from "./selection";
+import * as config from "./config";
 
 const workspaceFolders = vscode.workspace.workspaceFolders;
 
@@ -74,14 +74,41 @@ export async function removeExistingGitHooks(): Promise<void> {
   }
 }
 
-export async function setupGitCommitHooks(
-  selection: AssetSelection,
-): Promise<void> {
-  const secretScanningCommand = `docker run --rm -v "$(pwd):/repo" ghcr.io/l3montree-dev/devguard/scanner:main devguard-scanner secret-scanning --path="/repo" --dir \n`;
+export async function setupGitCommitHooks(): Promise<void> {
+  const apiUrl = config.getApiUrl();
+  const assetName = config.getAssetName();
+  const secretScanningCommand = `  echo "DevGuard: Running pre-commit DevGuard secret scanning ..."
+  token=$(devguard-scanner auth --print-token ${assetName ? `--assetName ${assetName} ` : ""} ${apiUrl ? `--apiUrl ${apiUrl} ` : ""}2>/dev/null)
+  status=$?
+  if [ "$status" -ne 0 ]; then
+    if command -v devguard-scanner > /dev/null 2>&1; then
+      echo "DevGuard: Could not produce a token." 
+    else
+      echo "DevGuard: devguard-scanner not found. Make sure that the devguard-scanner is installed (https://docs.devguard.org/getting-started/installation/#devguard-scanner)."
+    fi
+    echo "DevGuard: Running secret-scan without connection to a DevGuard instance."
+    docker run --rm -v "$(pwd):/repo" ghcr.io/l3montree-dev/devguard/scanner:main devguard-scanner secret-scanning --path="/repo" --dir
+  else
+    devguard-scanner secret-scanning --token=$token ${assetName ? `--assetName ${assetName} ` : ""} ${apiUrl ? `--apiUrl ${apiUrl} ` : ""}--path="." --dir
+  fi\n`;
 
   const intotoScanningCommand = `docker run --rm -v "$(pwd):/repo" ghcr.io/l3montree-dev/devguard/scanner:main devguard-scanner intoto run --step=post-commit \n`;
 
   try {
+    if (!apiUrl || !assetName) {
+      const action = await vscode.window.showWarningMessage(
+        "DevGuard: You are applying commit hooks without an connection to DevGuard. Functionality will be restricted to docker-based features. Setup a connection to access all features",
+        "Connect",
+        "Continue Without",
+      );
+      if (action === "Connect") {
+        if (action === "Connect") {
+          await vscode.commands.executeCommand("devguard.connect");
+        }
+        return;
+      }
+    }
+
     const stat = await fs.stat(gitHooksFolder);
     if (!stat.isDirectory()) {
       vscode.window.showErrorMessage(
