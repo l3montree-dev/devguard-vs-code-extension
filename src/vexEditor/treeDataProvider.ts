@@ -159,7 +159,7 @@ export class VexTreeProvider implements vscode.TreeDataProvider<
       return item;
     } else {
       const item = new vscode.TreeItem(`${vuln.vulnID}`);
-      item.description = `(${STATE_TO_DESCRIPTION[vuln.status]}) Score: ${vuln.rating.method} ${vuln.rating.score}`;
+      item.description = `(${STATE_TO_DESCRIPTION[vuln.status]}) Score: ${vuln.rating?.method} ${vuln.rating?.score}`;
       item.iconPath = this.iconForStatus(vuln.status);
       item.contextValue = "vexVuln";
       item.command = {
@@ -179,7 +179,7 @@ export class VexTreeProvider implements vscode.TreeDataProvider<
         this.vulns
           .get(element as string)
           ?.sort(
-            (a, b) => (b.rating.score as number) - (a.rating.score as number),
+            (a, b) => (b.rating?.score as number) - (a.rating?.score as number),
           ) ?? []
       );
     }
@@ -210,7 +210,10 @@ export class VexTreeProvider implements vscode.TreeDataProvider<
           new vscode.ThemeColor("charts.yellow"),
         );
       default:
-        return new vscode.ThemeIcon("question");
+        return new vscode.ThemeIcon(
+          "question",
+          new vscode.ThemeColor("charts.red"),
+        );
     }
   }
 }

@@ -207,6 +207,7 @@
     "typescript-eslint": "^8.56.1"
   },
   "dependencies": {
+    "@cyclonedx/cyclonedx-library": "10.1.0",
     "@noble/curves": "1.9.7",
     "jsonc-parser": "3.3.1"
   }

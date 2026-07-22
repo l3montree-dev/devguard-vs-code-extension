@@ -1,4 +1,5 @@
 import * as vscode from "vscode";
+import { Serialize } from "@cyclonedx/cyclonedx-library";
 
 const includedFilePaths = ["**/vex*.json", "**/*cdx.json", "**/*.cdx"];
 const excludedFilePaths = ["**/node_modules/**"];
@@ -9,6 +10,7 @@ export enum VexStatus {
   false_positive = "false_positive",
   under_investigation = "under_investigation",
   fixed = "fixed",
+  undefined = "undefined",
 }
 
 export const STATE_TO_DESCRIPTION: Record<VexStatus, string> = {
@@ -17,6 +19,7 @@ export const STATE_TO_DESCRIPTION: Record<VexStatus, string> = {
   false_positive: "False Positive",
   under_investigation: "Under Investigation",
   fixed: "Fixed",
+  undefined: "Undefined",
 };
 
 export const STATUS_OPTIONS: {
@@ -51,6 +54,7 @@ export const STATUS_TO_CDX_STATE: Record<VexStatus, string> = {
   false_positive: "false_positive",
   under_investigation: "in_triage",
   fixed: "resolved",
+  undefined: "undefined",
 };
 
 export const CDX_STATE_TO_STATUS: Record<string, VexStatus> = {
@@ -59,16 +63,21 @@ export const CDX_STATE_TO_STATUS: Record<string, VexStatus> = {
   false_positive: VexStatus.false_positive,
   in_triage: VexStatus.under_investigation,
   resolved: VexStatus.fixed,
+  undefined: VexStatus.undefined,
 };
+
+export type Bom = Serialize.JSON.Types.Normalized.Bom;
+export type Vulnerability = Serialize.JSON.Types.Normalized.Vulnerability;
+export type VulnerabilityRating =
+  Serialize.JSON.Types.Normalized.Vulnerability.Rating;
+export type VulnerabilityAffect =
+  Serialize.JSON.Types.Normalized.Vulnerability.Affect;
 
 export type VEXVuln = {
   vulnID: string;
   packageName: string;
   status: VexStatus;
-  rating: {
-    method: string;
-    score: Number;
-  };
+  rating: VulnerabilityRating | undefined;
   justificationDetail: string;
 };
 
