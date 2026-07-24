@@ -2,7 +2,7 @@ import * as path from "node:path";
 import * as vscode from "vscode";
 import { Logger } from "../logger";
 import { classifyDocument } from "./classify";
-import { runDockerScanner, DockerScanResult } from "./docker";
+import { runDockerScanner } from "./docker";
 import { parseSarif } from "./sarif";
 import * as config from "../config";
 
@@ -29,8 +29,7 @@ export class SastController implements vscode.Disposable {
     }
 
     const kind = classifyDocument(document.uri.fsPath);
-    // Iac scan is kinda implemented, but since the current checkov configuration in devguard does not support scanning individual files, we don't trigger it for now.
-    if (!kind || document.uri.scheme !== "file" || kind === "iac") {
+    if (!kind || document.uri.scheme !== "file") {
       return;
     }
 
