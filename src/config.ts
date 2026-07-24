@@ -13,8 +13,22 @@ function cfg(): vscode.WorkspaceConfiguration {
  * Falls back to the documented default if the setting is blank.
  */
 export function getApiUrl(): string {
-  const raw = (cfg().get<string>("apiUrl") ?? "").trim();
+  const raw = (cfg().get<string>("connection.apiUrl") ?? "").trim();
   const url = raw.length > 0 ? raw : "http://localhost:8080";
+  return url.replace(/\/+$/, "");
+}
+
+export async function setAssetName(assetName: string): Promise<void> {
+  await cfg().update(
+    "connection.assetName",
+    assetName.trim(),
+    vscode.ConfigurationTarget.Global,
+  );
+}
+
+export function getAssetName(): string {
+  const raw = (cfg().get<string>("connection.assetName") ?? "").trim();
+  const url = raw.length > 0 ? raw : "";
   return url.replace(/\/+$/, "");
 }
 

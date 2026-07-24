@@ -102,10 +102,15 @@
     "configuration": {
       "title": "DevGuard",
       "properties": {
-        "devguard.apiUrl": {
+        "devguard.connection.apiUrl": {
           "type": "string",
           "default": "https://api.main.devguard.org",
           "markdownDescription": "Base URL of the DevGuard backend. Only requests to this host are signed with your personal access token."
+        },
+        "devguard.connection.assetName": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "DevGuard Asset URI. Name of the asset in DevGuard you want to upload your information to."
         },
         "devguard.inlineDecorations.enabled": {
           "type": "boolean",

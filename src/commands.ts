@@ -37,29 +37,42 @@ export interface CommandDeps {
 
 export function registerCommands(deps: CommandDeps): vscode.Disposable[] {
   return [
-    vscode.commands.registerCommand("devguard.connect", () => connect(deps)),
-    vscode.commands.registerCommand("devguard.disconnect", () =>
-      disconnect(deps),
+    vscode.commands.registerCommand(
+      "devguard.connect",
+      async () => await connect(deps),
     ),
-    vscode.commands.registerCommand("devguard.selectAsset", () =>
-      selectAsset(deps),
+    vscode.commands.registerCommand(
+      "devguard.disconnect",
+      async () => await disconnect(deps),
     ),
-    vscode.commands.registerCommand("devguard.refresh", () => refresh(deps)),
-    vscode.commands.registerCommand("devguard.setupDependencyProxy", () =>
-      setupDependencyProxy(deps),
+    vscode.commands.registerCommand(
+      "devguard.selectAsset",
+      async () => await selectAsset(deps),
     ),
-    vscode.commands.registerCommand("devguard.viewSbom", () => viewSbom(deps)),
-    vscode.commands.registerCommand("devguard.generateSbom", () =>
-      generateSbom(deps),
+    vscode.commands.registerCommand(
+      "devguard.refresh",
+      async () => await refresh(deps),
     ),
-    vscode.commands.registerCommand("devguard.setupGitHooks", () => {
-      setupGitHooks(deps);
+    vscode.commands.registerCommand(
+      "devguard.setupDependencyProxy",
+      async () => await setupDependencyProxy(deps),
+    ),
+    vscode.commands.registerCommand(
+      "devguard.viewSbom",
+      async () => await viewSbom(deps),
+    ),
+    vscode.commands.registerCommand(
+      "devguard.generateSbom",
+      async () => await generateSbom(deps),
+    ),
+    vscode.commands.registerCommand("devguard.setupGitHooks", async () => {
+      await setupGitHooks(deps);
     }),
-    vscode.commands.registerCommand("devguard.removeGitHooks", () => {
-      removeGitHooks(deps);
+    vscode.commands.registerCommand("devguard.removeGitHooks", async () => {
+      await removeGitHooks(deps);
     }),
-    vscode.commands.registerCommand("devguard.generateVEX", () => {
-      generateVEX(deps);
+    vscode.commands.registerCommand("devguard.generateVEX", async () => {
+      await generateVEX(deps);
     }),
   ];
 }
@@ -69,12 +82,7 @@ type ConnectResult =
   | { ok: false; kind: "unverified" }
   | { ok: false; kind: "error"; err: unknown };
 
-async function connect({
-  client,
-  connection,
-  controller,
-  logger,
-}: CommandDeps): Promise<void> {
+async function connect(deps: CommandDeps): Promise<void> {
   if (!config.isApiUrlValid()) {
     vscode.window.showErrorMessage(
       "DevGuard: set a valid devguard.apiUrl before connecting.",
@@ -111,7 +119,7 @@ async function connect({
     );
     return;
   }
-
+  let userID = "";
   const result = await vscode.window.withProgress<ConnectResult>(
     {
       location: vscode.ProgressLocation.Notification,
@@ -119,11 +127,11 @@ async function connect({
     },
     async () => {
       try {
-        const who = await connection.withCandidate(token, () =>
-          client.whoami(),
+        const who = await deps.connection.withCandidate(token, () =>
+          deps.client.whoami(),
         );
         if (who.userID && who.userID !== "NO_SESSION") {
-          await connection.setToken(token, who.userID);
+          userID = who.userID;
           return { ok: true };
         }
         return { ok: false, kind: "unverified" };
@@ -134,60 +142,76 @@ async function connect({
   );
 
   if (result.ok) {
-    controller.refreshVisible();
-    const action = await vscode.window.showInformationMessage(
-      "DevGuard: connected.",
-      "Select asset",
-    );
-    if (action === "Select asset") {
-      await vscode.commands.executeCommand("devguard.selectAsset");
+    deps.controller.refreshVisible();
+    // selectAsset will need a token for connection alraedy, but we only want to store token with an according assetName as key
+    await deps.connection.setToken(token);
+    const assetName = await selectAsset(deps, false);
+    if (!assetName) {
+      // Delete the token from memory to avoid temporary access to functionalties in other functions if we can't store it to an assetName
+      await disconnect(deps, true);
+      vscode.window.showErrorMessage(
+        "DevGuard: could not find specified asset to store token.",
+      );
+      return;
+    }
+    // AssetName does not need to be passed since we can just obtain it from the settings inside of storeToken()
+    try {
+      await deps.connection.storeToken(token, userID);
+    } catch (err) {
+      await disconnect(deps, true);
+      vscode.window.showErrorMessage(
+        "DevGuard: Connection terminated - Could not use the devguard-scanner to store token in keyring. Make sure the devguard-scanner is installed. (https://docs.devguard.org/getting-started/installation/#devguard-scanner)",
+      );
     }
   } else if (result.kind === "unverified") {
     vscode.window.showErrorMessage(
       "DevGuard: the token could not be verified (signature rejected). Check that you pasted the whole token and that your system clock is accurate.",
     );
   } else {
-    reportError("validate the token", result.err, logger);
+    reportError("validate the token", result.err, deps.logger);
   }
 }
 
-async function disconnect({
-  connection,
-  selection,
-  controller,
-}: CommandDeps): Promise<void> {
+async function disconnect(
+  { connection, selection, controller }: CommandDeps,
+  supressLog = false,
+): Promise<void> {
   await connection.disconnect();
   await selection.clear();
   controller.refreshVisible();
-  vscode.window.showInformationMessage("DevGuard: disconnected.");
+  if (!supressLog) {
+    vscode.window.showInformationMessage("DevGuard: disconnected.");
+  }
 }
 
-async function selectAsset({
-  connection,
-  selection,
-  controller,
-  logger,
-}: CommandDeps): Promise<void> {
-  if (!connection.isConnected()) {
-    const action = await vscode.window.showInformationMessage(
-      "DevGuard: connect first to select an asset.",
-      "Connect",
-    );
-    if (action === "Connect") {
-      await vscode.commands.executeCommand("devguard.connect");
+async function selectAsset(
+  { connection, selection, controller, logger }: CommandDeps,
+  reqireConnection = true,
+): Promise<string> {
+  if (reqireConnection) {
+    if (!connection.isConnected()) {
+      const action = await vscode.window.showInformationMessage(
+        "DevGuard: connect first to select an asset.",
+        "Connect",
+      );
+      if (action === "Connect") {
+        await vscode.commands.executeCommand("devguard.connect");
+      }
+      return "";
     }
-    return;
   }
   let selected: SelectedAsset | undefined;
   try {
     selected = await selection.pick();
   } catch (err) {
     reportError("load organizations and assets", err, logger);
-    return;
+    return "";
   }
   if (!selected) {
-    return;
+    return "";
   }
+  const assetName = `${selected?.orgSlug}/${selected?.projectSlug}/${selected?.assetSlug}`;
+  await config.setAssetName(assetName);
   // Eagerly load the asset's risk data: warms the cache and surfaces the count
   // (or the real error) rather than failing silently in a background refresh.
   try {
@@ -211,6 +235,7 @@ async function selectAsset({
     reportError("load asset risk data", err, logger);
   }
   controller.refreshVisible();
+  return assetName;
 }
 
 async function refresh({
@@ -445,11 +470,10 @@ async function pickWorkspaceFolder(): Promise<
 }
 
 async function setupGitHooks({
-  selection,
   commitHookStatusBar,
 }: CommandDeps): Promise<void> {
   try {
-    await setupGitCommitHooks(selection);
+    await setupGitCommitHooks();
     if (
       await preCommitHooksExists() /*  && (await postCommitHooksExists()) */
     ) {
