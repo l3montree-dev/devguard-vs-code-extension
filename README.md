@@ -49,8 +49,9 @@ The inline insights work **without signing in** — they use DevGuard's public p
 | `DevGuard: Set Up Dependency Proxy (.npmrc)` | Point the project's npm registry at DevGuard's dependency proxy, which blocks malicious packages at install time. |
 | `DevGuard: View SBOM for Selected Asset` | Open the connected asset's CycloneDX SBOM as a read-only document. |
 | `DevGuard: Generate SBOM (Run devguard-scanner SCA)` | Run the `devguard-scanner sca` CLI on the project to generate and upload an SBOM to the selected asset, then refresh insights. |
-| `DevGuard: Setup Pre-Git-Commit-Hooks` | Bootstraps your locale `.git` folder with a pre-commit-hook for secret-scanning | 
-| `DevGuard: Removes Pre-Git-Commit-Hooks that were previously setup by DevGuard` | Removes the pre-commit-hooks that were previously set up using the `devguard.setupGitHooks` command | 
+| `DevGuard: Setup Pre-Git-Commit-Hooks` | Bootstraps your locale `.git` folder with a pre-commit-hook for secret-scanning. | 
+| `DevGuard: Removes Pre-Git-Commit-Hooks that were previously setup by DevGuard` | Removes the pre-commit-hooks that were previously set up using the `devguard.setupGitHooks` command. | 
+| `DevGuard: Generate VEX (Run devguard-scanner SCA)` | Generates a VEX Document based on your current project. | 
 
 ## Settings
 
