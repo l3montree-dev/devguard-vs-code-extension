@@ -23,6 +23,8 @@ import {
 } from "./commitHooks";
 import { StatusBarCommitHooks } from "./ui/statusBarCommitHooks";
 import os from "os";
+import * as fs from "node:fs/promises";
+import { DockerScanResult } from "./sast/docker";
 
 export interface CommandDeps {
   client: DevGuardClient;
@@ -535,7 +537,7 @@ async function generateVEX({
 }: CommandDeps): Promise<void> {
   const repoPath =
     vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? process.cwd();
-  const outputName = `.devguard-vex-${crypto.randomUUID()}`;
+  const outputName = `.devguard-vex-${crypto.randomUUID()}.json`;
 
   // Token is passed via DEVGUARD_TOKEN env (not argv) so it does not appear in the process list.
   const args = [
@@ -543,8 +545,6 @@ async function generateVEX({
     "--rm",
     "-v",
     `${repoPath}:/repo`,
-    "-v",
-    `${os.tmpdir()}:${"/tmp"}`,
     "ghcr.io/l3montree-dev/devguard/scanner:main",
     "devguard-scanner",
     "sca",
@@ -555,64 +555,73 @@ async function generateVEX({
 
   logger.info(`Running SCA scan to generate VEX …`);
 
-  let output = "";
-  const capture = (chunk: Buffer): void => {
-    const text = chunk.toString();
-    output = text.slice(-8000);
-  };
-
-  const exitCode = await vscode.window.withProgress<number | undefined>(
+  const sbom = await vscode.window.withProgress<string | undefined>(
     {
       location: vscode.ProgressLocation.Notification,
       title: `DevGuard: Generating VEX …`,
       cancellable: true,
     },
     (_progress, cancelToken) =>
-      new Promise<number | undefined>((resolve) => {
-        let child: ReturnType<typeof spawn> | undefined;
-        try {
-          child = spawn("docker", args);
-        } catch (err) {
-          logger.error("could not start the scanner", err);
-          resolve(undefined);
-          return;
-        }
-        cancelToken.onCancellationRequested(() => child?.kill());
-        child.stdout?.on("data", capture);
-        child.stderr?.on("data", capture);
-        child.on("error", (err) => {
-          logger.error("scanner process error", err);
-          resolve(undefined);
+      new Promise<string | undefined>((resolve, reject) => {
+        let proc = spawn("docker", args);
+
+        cancelToken.onCancellationRequested(() => proc?.kill());
+        const stdoutChunks: Buffer[] = [];
+        const stderrChunks: Buffer[] = [];
+
+        proc.stdout.on("data", (chunk: Buffer) => stdoutChunks.push(chunk));
+        proc.stderr.on("data", (chunk: Buffer) => stderrChunks.push(chunk));
+
+        proc.on("error", (err) => {
+          logger.error(
+            "DevGuard: Could not start scanner. Make sure Docker is running.",
+          );
+          logger.show();
+          reject(new Error());
         });
-        child.on("close", (code) => resolve(code ?? undefined));
+
+        proc.on("close", (code) => {
+          void (async () => {
+            if (code != 0) {
+              logger.error(
+                "DevGuard: Could not start scanner. Make sure Docker is running.",
+              );
+              logger.show();
+              resolve(undefined);
+            }
+            const output = stdoutChunks.toString();
+            //Marker might be a little unstable
+            const marker = '{"$schema"';
+            const index = output.indexOf(marker) - 10;
+            if (index === -1) {
+              reject(
+                new Error("DevGuard: Could not extract SBOM from output."),
+              );
+            }
+            const sbom = output.trim();
+            resolve(sbom);
+          })();
+        });
       }),
   );
+  if (!sbom) {
+    vscode.window.showErrorMessage(
+      `DevGuard: Could not extract SBOM from output.  See scanner output for more information.`,
+    );
+    return;
+  }
+  let cdxjson = "";
+  try {
+    cdxjson = JSON.stringify(JSON.parse(sbom), null, 2);
+  } catch (err: any) {
+    logger.error("DevGuard: Could not transform output to json.");
+    logger.show();
+    return;
+  }
 
-  if (exitCode === undefined) {
-    vscode.window.showErrorMessage(
-      `DevGuard: could not run SCA scan. Install the devguard-scanner CLI or set devguard.scannerPath.`,
-    );
-    return;
-  }
-  if (exitCode === 0) {
-    let cdxjson = output;
-    try {
-      cdxjson = JSON.stringify(JSON.parse(output), null, 2);
-    } catch {}
-    await sbomProvider.open(outputName, cdxjson);
-    const successMessage = "DevGuard: SCA complete — VEX generated .";
-    logger.info(successMessage);
-    vscode.window.showInformationMessage(successMessage);
-    return;
-  }
-  // Since we use the normal sca scan, this error check applies here as well as for generateSBOM()
-  if (/invalid specification version|not a valid CycloneDX/i.test(output)) {
-    vscode.window.showErrorMessage(
-      "DevGuard: the generated VEX used a CycloneDX version the scanner could not read. Rebuild devguard-scanner from source (go install ./cmd/devguard-scanner) or align your trivy version, then retry.",
-    );
-    return;
-  }
-  vscode.window.showWarningMessage(
-    `DevGuard: scanner exited with code ${exitCode} (see the DevGuard output). Insights refreshed.`,
-  );
+  await sbomProvider.open(outputName, cdxjson);
+  const successMessage = "DevGuard: SCA complete — VEX generated .";
+  logger.info(successMessage);
+  vscode.window.showInformationMessage(successMessage);
+  return;
 }
