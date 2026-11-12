@@ -1,0 +1,22 @@
+name: DevGuard-Workflow
+
+on:
+  workflow_dispatch:
+  push:
+
+jobs:
+  code-scanning:
+    uses: l3montree-dev/devguard-ci-components/.github/workflows/code-scanning.yml@main
+    permissions:
+      contents: read
+      security-events: write
+    with:
+      devguard-asset-name: l3montree-cybersecurity/projects/devguard/assets/devguard-vs-code-extension
+      devguard-artifact-name: "pkg:golang/github.com/l3montree-dev/devguard-vs-code-extension"
+      devguard-api-url: https://api.main.devguard.org
+      fail-on-risk: high
+      fail-on-cvss: high
+      devguard-web-ui: https://main.devguard.org
+      allow-failure: false
+    secrets:
+      devguard-token: ${{ secrets.DEVGUARD_TOKEN }}

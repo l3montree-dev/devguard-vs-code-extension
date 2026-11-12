@@ -33,7 +33,7 @@ The inline insights work **without signing in** — they use DevGuard's public p
 2. Open VS-Code and import the downloaded file to VS-Code under the `"Extensions-Tab"` (`Ctrl+K Ctrl+S (Windows/Linux)` or `Cmd+K Cmd+S (Mac)`) > `"..."` > `"Install from VSIX"`. Alternatively drag-and-drop the file into the extension-tab.
 
 ### Using the extension
-5
+
 1. Open a project with a `package.json` or `go.mod`. Badges appear automatically (no sign-in required).
 2. Run **DevGuard: Connect (Personal Access Token)** and paste your PAT. It is validated against the backend and stored in VS Code Secret Storage.
 3. Run **DevGuard: Select Organization / Project / Asset** (or click the status-bar item) to connect the workspace to an asset. Hovers then show that asset's open risks per package.
