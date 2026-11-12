@@ -107,7 +107,7 @@ export async function activate(
             title: "DevGuard: VEX Status",
           },
         );
-        if (!picked) return;
+        if (!picked) { return; };
 
         const placeHolderMessage =
           picked.value === "affected"
@@ -125,7 +125,7 @@ export async function activate(
 
         justification = justification?.trim();
 
-        if (justification === undefined) return;
+        if (justification === undefined) { return; };
 
         if (justification === "") {
           vscode.window.showErrorMessage(
