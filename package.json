@@ -4,6 +4,17 @@
   "description": "Inline dependency risk insights for npm and go (malicious flag, known vulnerabilities, release age, transitive dependency count and OpenSSF scorecard), dependency proxy setup, Git-hooks setup and background SAST scan on-save. Powered by DevGuard.",
   "version": "0.1.5",
   "publisher": "l3montree",
+  "license": "MIT",
+  "icon": "public/assets/devguard.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/l3montree-dev/devguard-vs-code-extension.git"
+  },
+  "homepage": "https://devguard.org",
+  "bugs": {
+    "url": "https://github.com/l3montree-dev/devguard/issues"
+  },
+  
   "engines": {
     "vscode": "^1.120.0"
   },
